@@ -1,0 +1,4 @@
+import Link from 'next/link';
+import { ArrowLeft, Compass } from 'lucide-react';
+import { Brand } from '@/components/ui/brand';
+export default function NotFound() { return <main className="grid min-h-screen place-items-center p-5"><div className="max-w-sm text-center"><div className="mb-10 flex justify-center"><Brand/></div><div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-accent-soft text-accent"><Compass size={38}/></div><p className="section-kicker mt-8">404 · Lost at sea</p><h1 className="mt-3 font-display text-4xl font-bold tracking-tight">This space doesn&apos;t exist.</h1><p className="mt-4 text-sm leading-7 text-subtle">The page you are looking for has moved, or maybe it was never here.</p><Link href="/" className="mt-7 inline-flex items-center gap-2 font-bold text-accent hover:underline"><ArrowLeft size={16}/> Back to Cove</Link></div></main>; }

@@ -1,0 +1,15 @@
+import Link from 'next/link';
+import { ArrowLeft, Heart, LockKeyhole, MessageCircle, Sparkles } from 'lucide-react';
+import { Brand } from './ui/brand';
+export function AuthShell({ children, eyebrow, title, description }: { children: React.ReactNode; eyebrow: string; title: string; description: string }) {
+  return <main className="grid min-h-[100dvh] bg-canvas lg:grid-cols-[minmax(0,1fr)_minmax(430px,.9fr)]">
+    <section className="flex flex-col px-6 py-7 sm:px-12 lg:px-[clamp(36px,7vw,120px)] lg:py-10"><Link href="/" aria-label="Cove home" className="w-max"><Brand/></Link>
+      <div className="mx-auto flex w-full max-w-[440px] flex-1 flex-col justify-center py-12"><span className="section-kicker">{eyebrow}</span><h1 className="mt-3 font-display text-[clamp(2.1rem,4vw,3.3rem)] font-extrabold leading-[1.15] tracking-[-.07em]">{title}</h1><p className="mt-3 text-sm leading-7 text-subtle">{description}</p><div className="mt-9">{children}</div></div>
+      <div className="flex items-center justify-between text-xs text-subtle"><span>© {new Date().getFullYear()} Cove</span><Link href="/" className="inline-flex items-center gap-1.5 hover:text-ink"><ArrowLeft size={14}/> Back to home</Link></div>
+    </section>
+    <section aria-hidden className="relative hidden min-h-screen flex-col justify-between overflow-hidden border-l border-line bg-[#201e31] p-14 lg:flex"><div className="pointer-events-none absolute -right-36 -top-48 h-[630px] w-[630px] rounded-full bg-[#8166c0]/25 blur-[100px]"/><div className="pointer-events-none absolute -bottom-48 -left-44 h-[580px] w-[580px] rounded-full bg-[#61aca4]/15 blur-[100px]"/>
+      <div className="relative inline-flex w-max items-center gap-2 rounded-full border border-[#ad9ada]/20 bg-white/[.06] px-3.5 py-2 text-[11px] font-bold uppercase tracking-[.16em] text-[#d7c9ff]"><Sparkles size={13}/> Better together</div>
+      <div className="relative mx-auto w-full max-w-[490px]"><div className="mb-10 grid grid-cols-3 gap-3"><div className="flex h-24 flex-col justify-between rounded-[20px] border border-white/10 bg-[#322d47] p-4 text-[#c9b7ff]"><MessageCircle size={22}/><span className="text-xs font-bold">Talk</span></div><div className="flex h-24 flex-col justify-between rounded-[20px] border border-white/10 bg-[#294247] p-4 text-[#a0ddd7]"><Heart size={22}/><span className="text-xs font-bold">Connect</span></div><div className="flex h-24 flex-col justify-between rounded-[20px] border border-white/10 bg-[#3f333c] p-4 text-[#edb9c0]"><LockKeyhole size={22}/><span className="text-xs font-bold">Belong</span></div></div><p className="font-display text-[clamp(2.8rem,4vw,4.6rem)] font-extrabold leading-[1.1] tracking-[-.08em] text-[#f5f1ff]">A home for<br/><span className="text-[#c7b4ff]">your people.</span></p><p className="mt-6 max-w-sm text-sm leading-7 text-[#ada5bf]">A little closer, no matter where you are. The best conversations are the ones you share.</p></div><div className="relative flex items-center gap-2 text-xs text-[#a59bb8]"><span className="h-1.5 w-1.5 rounded-full bg-[#8ddabd]"/> Your space is waiting</div>
+    </section>
+  </main>;
+}

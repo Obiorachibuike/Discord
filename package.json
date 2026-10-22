@@ -4,7 +4,10 @@
   "private": true,
   "description": "Aether \u2014 a full-stack community communication platform (voice, video, text, and DMs).",
   "workspaces": [
-    "packages/*"
+    "packages/shared",
+    "packages/database",
+    "packages/server",
+    "packages/web"
   ],
   "engines": {
     "node": ">=20.11"
