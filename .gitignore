@@ -1,0 +1,17 @@
+node_modules/
+.next/
+.next-e2e/
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.local-postgres/
+.local-uploads/
+*.log
+.DS_Store
+tests/artifacts/

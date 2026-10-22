@@ -1,0 +1,493 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Presence {
+  ONLINE
+  IDLE
+  DND
+  INVISIBLE
+  OFFLINE
+}
+
+enum ChannelKind {
+  TEXT
+  ANNOUNCEMENT
+  VOICE
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum Permission {
+  MANAGE_SERVER
+  MANAGE_CHANNELS
+  MANAGE_ROLES
+  MANAGE_INVITES
+  VIEW_CHANNEL
+  SEND_MESSAGES
+  DELETE_MESSAGES
+  PIN_MESSAGES
+  MANAGE_MEMBERS
+  KICK_MEMBERS
+  BAN_MEMBERS
+  MODERATE_MEMBERS
+  VIEW_AUDIT_LOG
+  CONNECT_VOICE
+  SPEAK
+  SHARE_VIDEO
+  SHARE_SCREEN
+  MENTION_EVERYONE
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+}
+
+enum ConversationKind {
+  DIRECT
+  GROUP
+}
+
+enum NotificationKind {
+  DIRECT_MESSAGE
+  MENTION
+  FRIEND_REQUEST
+  FRIEND_ACCEPTED
+  INVITE
+  MODERATION
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+enum ModerationKind {
+  KICK
+  BAN
+  UNBAN
+  TIMEOUT
+  CLEAR_TIMEOUT
+  DELETE_MESSAGE
+}
+
+enum TokenPurpose {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+}
+
+model User {
+  id                 String    @id @default(uuid()) @db.Uuid
+  email              String    @unique @db.VarChar(320)
+  username           String    @unique @db.VarChar(32)
+  displayName        String    @db.VarChar(80)
+  passwordHash       String?   @db.Text
+  emailVerifiedAt    DateTime?
+  avatarUrl          String?   @db.Text
+  bio                String?   @db.VarChar(500)
+  presence           Presence  @default(ONLINE)
+  statusMessage      String?   @db.VarChar(140)
+  allowDMFromMembers Boolean   @default(true)
+  notifyDMs          Boolean   @default(true)
+  notifyMentions     Boolean   @default(true)
+  notifyFriends      Boolean   @default(true)
+  theme              String    @default("system") @db.VarChar(12)
+  accent             String    @default("violet") @db.VarChar(12)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  accounts           Account[]
+  sessions           Session[]
+  verificationTokens VerificationToken[]
+  ownedServers       Server[]  @relation("ServerOwner")
+  memberships        ServerMember[]
+  issuedInvites      Invitation[]
+  authoredMessages   Message[] @relation("MessageAuthor")
+  uploadedAttachments MessageAttachment[]
+  reactions          MessageReaction[]
+  pins               MessagePin[]
+  sentFriendRequests Friendship[] @relation("FriendRequester")
+  receivedFriendRequests Friendship[] @relation("FriendRecipient")
+  blockedUsers       UserBlock[] @relation("Blocker")
+  blockedBy          UserBlock[] @relation("Blocked")
+  createdConversations Conversation[]
+  conversations      ConversationMember[]
+  notifications      Notification[] @relation("NotificationRecipient")
+  causedNotifications Notification[] @relation("NotificationActor")
+  moderationActions  ModerationAction[] @relation("ModerationActor")
+  moderated          ModerationAction[] @relation("ModerationTarget")
+  reports            ModerationReport[] @relation("ReportAuthor")
+  reported           ModerationReport[] @relation("ReportTarget")
+  reviewedReports    ModerationReport[] @relation("ReportReviewer")
+  auditLogs          AuditLog[]
+  bans               ServerBan[] @relation("BannedUser")
+  bansIssued         ServerBan[] @relation("BanActor")
+}
+
+model Account {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @db.Uuid
+  provider          String   @db.VarChar(40)
+  providerAccountId String   @db.VarChar(255)
+  createdAt         DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique @db.VarChar(64)
+  csrfHash  String    @db.VarChar(64)
+  userAgent String?   @db.VarChar(255)
+  createdAt DateTime  @default(now())
+  lastSeenAt DateTime @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
+
+model VerificationToken {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @db.Uuid
+  tokenHash String       @unique @db.VarChar(64)
+  purpose   TokenPurpose
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime     @default(now())
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, purpose])
+  @@index([expiresAt])
+}
+
+model Server {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @db.VarChar(80)
+  description String?  @db.VarChar(500)
+  iconUrl     String?  @db.Text
+  ownerId     String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  owner       User     @relation("ServerOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members     ServerMember[]
+  roles       Role[]
+  categories  ChannelCategory[]
+  channels    Channel[]
+  invitations Invitation[]
+  bans        ServerBan[]
+  moderation  ModerationAction[]
+  reports     ModerationReport[]
+  auditLogs   AuditLog[]
+  @@index([ownerId])
+}
+
+model ServerMember {
+  id            String    @id @default(uuid()) @db.Uuid
+  serverId      String    @db.Uuid
+  userId        String    @db.Uuid
+  timedOutUntil DateTime?
+  joinedAt      DateTime  @default(now())
+  server        Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roles         MemberRole[]
+  @@unique([serverId, userId])
+  @@index([userId])
+  @@index([serverId, joinedAt])
+}
+
+model Role {
+  id          String @id @default(uuid()) @db.Uuid
+  serverId    String @db.Uuid
+  name        String @db.VarChar(50)
+  color       String? @db.VarChar(7)
+  position    Int    @default(0)
+  isDefault   Boolean @default(false)
+  isManaged   Boolean @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  server      Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  permissions RolePermission[]
+  members     MemberRole[]
+  overrides   ChannelPermissionOverride[]
+  @@unique([serverId, name])
+  @@index([serverId, position])
+}
+
+model RolePermission {
+  roleId     String     @db.Uuid
+  permission Permission
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  @@id([roleId, permission])
+}
+
+model MemberRole {
+  memberId String @db.Uuid
+  roleId   String @db.Uuid
+  member   ServerMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  role     Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  @@id([memberId, roleId])
+  @@index([roleId])
+}
+
+model ChannelCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  serverId  String   @db.Uuid
+  name      String   @db.VarChar(80)
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  server    Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  channels  Channel[]
+  @@index([serverId, position])
+}
+
+model Channel {
+  id          String      @id @default(uuid()) @db.Uuid
+  serverId    String      @db.Uuid
+  categoryId  String?     @db.Uuid
+  name        String      @db.VarChar(80)
+  topic       String?     @db.VarChar(500)
+  kind        ChannelKind @default(TEXT)
+  visibility  Visibility  @default(PUBLIC)
+  position    Int         @default(0)
+  userLimit   Int?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  server      Server      @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  category    ChannelCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  overrides   ChannelPermissionOverride[]
+  messages    Message[]
+  @@unique([serverId, name])
+  @@index([serverId, categoryId, position])
+}
+
+model ChannelPermissionOverride {
+  id        String   @id @default(uuid()) @db.Uuid
+  channelId String   @db.Uuid
+  roleId    String?  @db.Uuid
+  userId    String?  @db.Uuid
+  allow     Permission[] @default([])
+  deny      Permission[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  role      Role?    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  @@index([channelId])
+  @@index([roleId])
+  @@index([userId])
+}
+
+model Invitation {
+  id        String    @id @default(uuid()) @db.Uuid
+  serverId  String    @db.Uuid
+  issuerId  String    @db.Uuid
+  tokenHash String    @unique @db.VarChar(64)
+  maxUses   Int?
+  uses      Int       @default(0)
+  expiresAt DateTime?
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  server    Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  issuer    User      @relation(fields: [issuerId], references: [id], onDelete: Cascade)
+  @@index([serverId, createdAt])
+  @@index([expiresAt])
+}
+
+model ServerBan {
+  serverId String   @db.Uuid
+  userId   String   @db.Uuid
+  actorId  String   @db.Uuid
+  reason   String?  @db.VarChar(500)
+  createdAt DateTime @default(now())
+  server   Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user     User     @relation("BannedUser", fields: [userId], references: [id], onDelete: Cascade)
+  actor    User     @relation("BanActor", fields: [actorId], references: [id], onDelete: Cascade)
+  @@id([serverId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String    @id @default(uuid()) @db.Uuid
+  channelId      String?   @db.Uuid
+  conversationId String?   @db.Uuid
+  authorId       String    @db.Uuid
+  replyToId      String?   @db.Uuid
+  content        String    @db.VarChar(4000)
+  clientNonce    String?   @db.VarChar(100)
+  editedAt       DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  channel        Channel?  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  author         User      @relation("MessageAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  replyTo        Message?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies        Message[] @relation("MessageReplies")
+  attachments    MessageAttachment[]
+  reactions      MessageReaction[]
+  pin            MessagePin?
+  reports        ModerationReport[]
+  @@unique([authorId, clientNonce])
+  @@index([channelId, createdAt, id])
+  @@index([conversationId, createdAt, id])
+  @@index([authorId, createdAt])
+}
+
+model MessageAttachment {
+  id          String   @id @default(uuid()) @db.Uuid
+  messageId   String?  @db.Uuid
+  uploadedById String  @db.Uuid
+  provider    String   @db.VarChar(20)
+  storageKey  String   @unique @db.VarChar(500)
+  filename    String   @db.VarChar(255)
+  mimeType    String   @db.VarChar(100)
+  size        Int
+  createdAt   DateTime @default(now())
+  message     Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  uploadedBy  User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  @@index([messageId])
+  @@index([uploadedById, createdAt])
+}
+
+model MessageReaction {
+  messageId String   @db.Uuid
+  userId    String   @db.Uuid
+  emoji     String   @db.VarChar(32)
+  createdAt DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([messageId, userId, emoji])
+}
+
+model MessagePin {
+  messageId  String   @id @db.Uuid
+  pinnedById String   @db.Uuid
+  createdAt  DateTime @default(now())
+  message    Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  pinnedBy   User     @relation(fields: [pinnedById], references: [id], onDelete: Cascade)
+}
+
+model Friendship {
+  id          String   @id @default(uuid()) @db.Uuid
+  pairKey     String   @unique @db.VarChar(73)
+  requesterId String   @db.Uuid
+  recipientId String   @db.Uuid
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  requester   User     @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  recipient   User     @relation("FriendRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  @@index([recipientId, status])
+  @@index([requesterId, status])
+}
+
+model UserBlock {
+  blockerId String   @db.Uuid
+  blockedId String   @db.Uuid
+  createdAt DateTime @default(now())
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+model Conversation {
+  id        String   @id @default(uuid()) @db.Uuid
+  kind      ConversationKind
+  directKey String?  @unique @db.VarChar(73)
+  name      String?  @db.VarChar(80)
+  createdById String @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  members   ConversationMember[]
+  messages  Message[]
+  @@index([createdAt])
+}
+
+model ConversationMember {
+  conversationId String   @db.Uuid
+  userId         String   @db.Uuid
+  joinedAt       DateTime @default(now())
+  lastReadAt     DateTime?
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([conversationId, userId])
+  @@index([userId, joinedAt])
+}
+
+model Notification {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  actorId     String?  @db.Uuid
+  kind        NotificationKind
+  data        Json
+  dedupeKey   String?  @unique @db.VarChar(150)
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+  user        User     @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor       User?    @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  @@index([userId, readAt, createdAt])
+}
+
+model ModerationAction {
+  id        String   @id @default(uuid()) @db.Uuid
+  serverId  String   @db.Uuid
+  actorId   String   @db.Uuid
+  targetId  String   @db.Uuid
+  kind      ModerationKind
+  reason    String?  @db.VarChar(500)
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  server    Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  actor     User     @relation("ModerationActor", fields: [actorId], references: [id], onDelete: Restrict)
+  target    User     @relation("ModerationTarget", fields: [targetId], references: [id], onDelete: Restrict)
+  @@index([serverId, createdAt])
+  @@index([targetId, createdAt])
+}
+
+model ModerationReport {
+  id            String   @id @default(uuid()) @db.Uuid
+  serverId      String?  @db.Uuid
+  reporterId    String   @db.Uuid
+  targetUserId  String?  @db.Uuid
+  targetMessageId String? @db.Uuid
+  reviewerId    String?  @db.Uuid
+  reason        String   @db.VarChar(1000)
+  status        ReportStatus @default(OPEN)
+  createdAt     DateTime @default(now())
+  reviewedAt    DateTime?
+  server        Server?  @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  reporter      User     @relation("ReportAuthor", fields: [reporterId], references: [id], onDelete: Restrict)
+  targetUser    User?    @relation("ReportTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+  targetMessage Message? @relation(fields: [targetMessageId], references: [id], onDelete: SetNull)
+  reviewer      User?    @relation("ReportReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  @@index([serverId, status, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  serverId   String   @db.Uuid
+  actorId    String   @db.Uuid
+  action     String   @db.VarChar(80)
+  targetType String?  @db.VarChar(40)
+  targetId   String?  @db.VarChar(100)
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  server     Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  actor      User     @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  @@index([serverId, createdAt])
+}

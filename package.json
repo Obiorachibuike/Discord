@@ -1,0 +1,43 @@
+{
+  "name": "cove-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "postinstall": "PRISMA_SCHEMA_ENGINE_BINARY=/bin/true PRISMA_QUERY_ENGINE_LIBRARY=/bin/true prisma generate --schema packages/db/prisma/schema.prisma",
+    "dev": "npm run build -w @cove/shared && npm run build -w @cove/db && concurrently -n api,web -c cyan,magenta 'npm run dev -w @cove/api' 'npm run dev -w @cove/web'",
+    "build": "npm run build -w @cove/shared && npm run build -w @cove/db && npm run build -w @cove/api && npm run build -w @cove/web",
+    "typecheck": "npm run build -w @cove/shared && npm run build -w @cove/db && npm run typecheck -w @cove/api && npm run typecheck -w @cove/web",
+    "lint": "eslint apps packages tests --ext .ts,.tsx --max-warnings 0",
+    "test": "vitest run tests/unit",
+    "test:integration": "node scripts/prepare-test-db.mjs && vitest run tests/integration --fileParallelism=false",
+    "test:e2e": "node scripts/prepare-test-db.mjs && playwright test",
+    "db:validate": "PRISMA_SCHEMA_ENGINE_BINARY=/bin/true PRISMA_QUERY_ENGINE_LIBRARY=/bin/true prisma validate --schema packages/db/prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema packages/db/prisma/schema.prisma",
+    "db:deploy": "prisma migrate deploy --schema packages/db/prisma/schema.prisma",
+    "db:studio": "prisma studio --schema packages/db/prisma/schema.prisma",
+    "cleanup:orphans": "tsx scripts/cleanup-orphans.ts",
+    "dev:postgres": "node scripts/local-postgres.mjs",
+    "db:local-deploy": "node scripts/migrate-local.mjs",
+    "test:db:prepare": "node scripts/prepare-test-db.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.0",
+    "@sparticuz/chromium": "141.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.46.0",
+    "@typescript-eslint/parser": "^8.46.0",
+    "concurrently": "^9.2.1",
+    "embedded-postgres": "16.14.0-beta.17",
+    "eslint": "^8.57.1",
+    "prisma": "6.19.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.5"
+  }
+}
