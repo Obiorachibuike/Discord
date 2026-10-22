@@ -1,0 +1,45 @@
+{
+  "name": "aether",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aether \u2014 a full-stack community communication platform (voice, video, text, and DMs).",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "npm run dev --workspace @aether/web",
+    "dev:server": "npm run dev --workspace @aether/server",
+    "dev:db": "node scripts/devdb.mjs",
+    "build": "npm run build --workspace @aether/shared && npm run build --workspace @aether/database && npm run build --workspace @aether/server && npm run build --workspace @aether/web",
+    "build:server": "npm run build --workspace @aether/server",
+    "build:web": "npm run build --workspace @aether/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "test": "npm run test --workspace @aether/server",
+    "test:unit": "npm run test:unit --workspace @aether/server",
+    "test:integration": "npm run test:integration --workspace @aether/server",
+    "test:realtime": "npm run test:realtime --workspace @aether/server",
+    "test:e2e": "playwright test",
+    "db:generate": "npm run generate --workspace @aether/database",
+    "db:migrate": "npm run migrate --workspace @aether/database",
+    "db:seed": "npm run seed --workspace @aether/database",
+    "db:reset": "npm run reset --workspace @aether/database",
+    "db:studio": "npm run studio --workspace @aether/database",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.49.1",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^15.1.6",
+    "globals": "^15.14.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0",
+    "embedded-postgres": "^17.10.0-beta.17",
+    "http-proxy": "^1.18.1"
+  }
+}

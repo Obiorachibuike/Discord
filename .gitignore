@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Builds
+dist/
+.next/
+out/
+build/
+*.tsbuildinfo
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Runtime data
+.pg-data/
+.pgdata/
+uploads/
+.smoke-uploads/
+*.log
+logs/
+
+# Test artifacts
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
