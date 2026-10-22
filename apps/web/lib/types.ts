@@ -1,0 +1,15 @@
+export type Presence = 'ONLINE' | 'IDLE' | 'DND' | 'INVISIBLE' | 'OFFLINE';
+export type User = { id: string; username: string; displayName: string; avatarUrl: string | null; bio: string | null; statusMessage: string | null; presence: Presence; createdAt: string;
+  email?: string; emailVerifiedAt?: string | null; allowDMFromMembers?: boolean; notifyDMs?: boolean; notifyMentions?: boolean; notifyFriends?: boolean; theme?: 'system'|'dark'|'light'; accent?: 'violet'|'teal'|'rose'|'amber' };
+export type Channel = { id: string; serverId: string; categoryId: string | null; name: string; topic: string | null; kind: 'TEXT'|'ANNOUNCEMENT'|'VOICE'; visibility: 'PUBLIC'|'PRIVATE'; position: number; userLimit: number | null };
+export type Category = { id: string; name: string; position: number };
+export type Server = { id: string; name: string; description: string | null; iconUrl: string | null; ownerId: string; channels: Channel[]; categories: Category[]; myPermissions: string[]; _count: { members: number } };
+export type ServerSummary = Pick<Server, 'id'|'name'|'description'|'iconUrl'|'ownerId'|'_count'>;
+export type Message = { id: string; channelId: string | null; conversationId: string | null; author: User; content: string; clientNonce: string | null; replyTo: { id: string; authorId: string; content: string } | null;
+  attachments: { id: string; filename: string; mimeType: string; size: number; url: string }[];
+  reactions: { emoji: string; userId: string }[]; pin: { pinnedById: string; createdAt: string } | null;
+  editedAt: string | null; deletedAt: string | null; createdAt: string };
+export type Conversation = { id: string; kind: 'DIRECT'|'GROUP'; name: string | null; createdById: string; members: User[];
+  lastMessage?: { id: string; content: string; createdAt: string; authorId: string } | null; lastReadAt?: string | null };
+export type Member = { id: string; user: User; roles: { id: string; name: string; position: number; color: string | null }[]; joinedAt: string; timedOutUntil: string | null };
+export type Notification = { id: string; kind: string; data: Record<string, string>; actorId: string | null; readAt: string | null; createdAt: string };
