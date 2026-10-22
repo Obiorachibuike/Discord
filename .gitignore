@@ -1,17 +1,36 @@
+# Dependencies
 node_modules/
-.next/
-.next-e2e/
+.pnp/
+.pnp.js
+
+# Builds
 dist/
+.next/
+out/
 build/
-coverage/
-playwright-report/
-test-results/
 *.tsbuildinfo
+
+# Environment & secrets
 .env
 .env.*
 !.env.example
-.local-postgres/
-.local-uploads/
+
+# Runtime data
+.pg-data/
+.pgdata/
+uploads/
+.smoke-uploads/
 *.log
+logs/
+
+# Test artifacts
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# Editors / OS
 .DS_Store
-tests/artifacts/
+.idea/
+.vscode/
+*.swp

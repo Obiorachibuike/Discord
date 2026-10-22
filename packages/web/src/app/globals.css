@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root,
+  [data-theme='light'] {
+    --background: 220 20% 97%;
+    --foreground: 224 24% 12%;
+    --surface: 0 0% 100%;
+    --surface-raised: 0 0% 100%;
+    --surface-overlay: 0 0% 99%;
+    --muted: 220 16% 92%;
+    --muted-foreground: 224 12% 40%;
+    --accent: 245 75% 58%;
+    --accent-foreground: 0 0% 100%;
+    --accent-soft: 245 75% 95%;
+    --border: 220 14% 86%;
+    --ring: 245 75% 58%;
+    --danger: 0 72% 51%;
+    --success: 152 60% 38%;
+    --warning: 38 92% 45%;
+  }
+
+  [data-theme='dark'] {
+    --background: 228 18% 8%;
+    --foreground: 220 14% 91%;
+    --surface: 228 16% 11%;
+    --surface-raised: 228 14% 14%;
+    --surface-overlay: 228 14% 16%;
+    --muted: 228 12% 18%;
+    --muted-foreground: 224 10% 64%;
+    --accent: 245 80% 66%;
+    --accent-foreground: 0 0% 100%;
+    --accent-soft: 245 60% 22%;
+    --border: 228 12% 20%;
+    --ring: 245 80% 66%;
+    --danger: 0 72% 62%;
+    --success: 152 55% 48%;
+    --warning: 38 92% 56%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body {
+    @apply h-full;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04';
+  }
+
+  ::selection {
+    @apply bg-accent-soft;
+  }
+
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Slim scrollbars */
+  .scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .scroll-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scroll-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-lg border bg-surface shadow-sm;
+  }
+  .skeleton {
+    @apply relative overflow-hidden rounded-md bg-muted;
+  }
+  .skeleton::after {
+    @apply absolute inset-0 -translate-x-full animate-[shimmer_1.4s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent;
+    content: '';
+  }
+}

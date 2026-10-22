@@ -1,43 +1,48 @@
 {
-  "name": "cove-workspace",
-  "private": true,
+  "name": "aether",
   "version": "0.1.0",
+  "private": true,
+  "description": "Aether \u2014 a full-stack community communication platform (voice, video, text, and DMs).",
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "packages/shared",
+    "packages/database",
+    "packages/server",
+    "packages/web"
   ],
   "engines": {
-    "node": ">=22.12"
+    "node": ">=20.11"
   },
   "scripts": {
-    "postinstall": "PRISMA_SCHEMA_ENGINE_BINARY=/bin/true PRISMA_QUERY_ENGINE_LIBRARY=/bin/true prisma generate --schema packages/db/prisma/schema.prisma",
-    "dev": "npm run build -w @cove/shared && npm run build -w @cove/db && concurrently -n api,web -c cyan,magenta 'npm run dev -w @cove/api' 'npm run dev -w @cove/web'",
-    "build": "npm run build -w @cove/shared && npm run build -w @cove/db && npm run build -w @cove/api && npm run build -w @cove/web",
-    "typecheck": "npm run build -w @cove/shared && npm run build -w @cove/db && npm run typecheck -w @cove/api && npm run typecheck -w @cove/web",
-    "lint": "eslint apps packages tests --ext .ts,.tsx --max-warnings 0",
-    "test": "vitest run tests/unit",
-    "test:integration": "node scripts/prepare-test-db.mjs && vitest run tests/integration --fileParallelism=false",
-    "test:e2e": "node scripts/prepare-test-db.mjs && playwright test",
-    "db:validate": "PRISMA_SCHEMA_ENGINE_BINARY=/bin/true PRISMA_QUERY_ENGINE_LIBRARY=/bin/true prisma validate --schema packages/db/prisma/schema.prisma",
-    "db:migrate": "prisma migrate dev --schema packages/db/prisma/schema.prisma",
-    "db:deploy": "prisma migrate deploy --schema packages/db/prisma/schema.prisma",
-    "db:studio": "prisma studio --schema packages/db/prisma/schema.prisma",
-    "cleanup:orphans": "tsx scripts/cleanup-orphans.ts",
-    "dev:postgres": "node scripts/local-postgres.mjs",
-    "db:local-deploy": "node scripts/migrate-local.mjs",
-    "test:db:prepare": "node scripts/prepare-test-db.mjs"
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "npm run dev --workspace @aether/web",
+    "dev:server": "npm run dev --workspace @aether/server",
+    "dev:db": "node scripts/devdb.mjs",
+    "build": "npm run build --workspace @aether/shared && npm run build --workspace @aether/database && npm run build --workspace @aether/server && npm run build --workspace @aether/web",
+    "build:server": "npm run build --workspace @aether/server",
+    "build:web": "npm run build --workspace @aether/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "test": "npm run test --workspace @aether/server",
+    "test:unit": "npm run test:unit --workspace @aether/server",
+    "test:integration": "npm run test:integration --workspace @aether/server",
+    "test:realtime": "npm run test:realtime --workspace @aether/server",
+    "test:e2e": "playwright test",
+    "db:generate": "npm run generate --workspace @aether/database",
+    "db:migrate": "npm run migrate --workspace @aether/database",
+    "db:seed": "npm run seed --workspace @aether/database",
+    "db:reset": "npm run reset --workspace @aether/database",
+    "db:studio": "npm run studio --workspace @aether/database",
+    "e2e": "playwright test"
   },
   "devDependencies": {
-    "@playwright/test": "1.56.0",
-    "@sparticuz/chromium": "141.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.46.0",
-    "@typescript-eslint/parser": "^8.46.0",
-    "concurrently": "^9.2.1",
-    "embedded-postgres": "16.14.0-beta.17",
-    "eslint": "^8.57.1",
-    "prisma": "6.19.0",
-    "tsx": "^4.20.0",
-    "typescript": "^5.9.0",
-    "vitest": "^5.0.5"
+    "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.49.1",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^15.1.6",
+    "globals": "^15.14.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0",
+    "embedded-postgres": "^17.10.0-beta.17",
+    "http-proxy": "^1.18.1"
   }
 }

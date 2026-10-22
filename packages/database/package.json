@@ -1,0 +1,41 @@
+{
+  "name": "@aether/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
+    }
+  },
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "migrate": "tsx src/migrate.ts",
+    "reset": "tsx src/reset.ts",
+    "seed": "tsx src/seed.ts",
+    "studio": "prisma studio",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@aether/shared": "*",
+    "@node-rs/argon2": "^2.0.2",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/pg": "^8.11.10",
+    "prisma": "^7.10.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

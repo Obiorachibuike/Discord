@@ -1,67 +1,117 @@
-# Cove
+# Aether
 
-**A place for your people.** Cove is an original-branded, Discord-inspired communication platform—not affiliated with Discord. This repository contains a working, database-backed web application rather than a static mockup.
+**Aether** is a modern, self-hostable communication platform for communities — real-time text
+channels, voice/video rooms, screen sharing, direct messages, roles, permissions and moderation,
+in one full-stack TypeScript monorepo.
 
-## What is implemented
+> Aether is an original product with its own identity and branding. It is not affiliated with,
+> endorsed by, or a copy of Discord's proprietary assets.
 
-- Account registration/sign-in, Argon2id passwords, email verification and recovery when SMTP is configured, optional Google OAuth, HTTP-only server-side sessions, CSRF, device sessions, profiles, themes, and presence.
-- Communities, expiring/use-limited invitation links, categories, text/announcement/voice channels, private-channel overrides, role hierarchy and assignment, ownership transfer, moderation, reports, audit log, and deletion.
-- Persisted channel and private/group messages, Socket.IO delivery, typing, replies, editing, reactions, pins, uploads, pagination, idempotent sends, and authorized PostgreSQL full-text search.
-- Friend requests, blocks, private/group conversations, in-app notifications, and an adaptive desktop/mobile React interface.
-- Optional LiveKit call-token/room integration for voice, video, screen sharing, and device controls; optional Redis for distributed Socket.IO, presence, rate limits, and BullMQ attachment cleanup.
+## Features
 
-**Honest boundary:** without external credentials, Google sign-in, SMTP delivery, Cloudinary/S3 storage, and LiveKit calls cannot be exercised end to end. The UI hides unconfigured Google sign-in, the API returns an explicit `503` for unavailable call/email operations, and production refuses to start without SMTP and durable object storage. See [ENGINEERING_REPORT.md](ENGINEERING_REPORT.md) for verified results and limitations.
+- **Servers & channels** — categories, text/voice/announcement channels, private channels with
+  per-role and per-member overrides, invites with expiry/use limits.
+- **Real-time messaging** — Socket.IO delivery with optimistic `clientId` dedup, replies,
+  reactions, pins, edits, deletes, typing indicators, read states and pagination (never loads
+  full history into the browser).
+- **Voice & video** — LiveKit-powered voice channels, camera tiles and screen sharing with a
+  one-click join panel (explicit "not configured" state until LiveKit credentials are set).
+- **Friends & DMs** — friend requests, presence, direct and group conversations, blocks.
+- **Roles & permissions** — 19 permission bits, deny-by-default authorization, owner bypass,
+  server defaults + channel overrides resolved server-side on every operation.
+- **Moderation** — kick, ban, timeout, reports and an audit log trail.
+- **Accounts** — email verification, password reset, Argon2id hashing, HTTP-only session
+  cookies with CSRF double-submit, optional Google ID-token sign-in.
+- **Search** — PostgreSQL full-text search scoped per server with permission filtering.
+- **Attachments** — drag-and-drop upload with local disk, Cloudinary or S3/R2 storage drivers.
+
+## Monorepo layout
+
+| Package | What it is |
+| --- | --- |
+| `packages/shared` | Zod schemas, DTO types, permission bits, socket contract — shared by everything |
+| `packages/database` | Prisma schema, migrations, seed, client |
+| `packages/server` | Express REST API + Socket.IO gateway (Vitest: 104 tests) |
+| `packages/web` | Next.js 15 App Router frontend (React 19, Tailwind, TanStack Query) |
+| `scripts/` | Embedded-Postgres helper, boot smoke, one-command run |
 
 ## Quick start
 
-Requirements: Node.js **22.12+**, npm, PostgreSQL **16+** (or Docker). Redis is optional for a single API instance.
+Requirements: Node.js ≥ 20, npm ≥ 10. A local PostgreSQL is **not** required for development —
+the repo ships an embedded PostgreSQL runner.
 
 ```bash
-npm ci
-cp .env.example .env
-# Set SESSION_SECRET in .env to a random value of at least 32 characters.
-# Start Postgres using ONE option:
-# For Docker, add a unique POSTGRES_PASSWORD to .env and update DATABASE_URL
-# to use that SAME password (and TEST_DATABASE_URL if you will run tests).
-docker compose up -d postgres
-# OR: npm run dev:postgres  (foreground, bundled development-only Postgres;
-# its password matches the development-only DATABASE_URL in .env.example)
-npm run db:deploy
-npm run dev
+npm install
+npm run generate --workspace @aether/database   # generate Prisma client
+npm run build --workspace @aether/shared && \
+npm run build --workspace @aether/database && \
+npm run build --workspace @aether/server && \
+npm run build --workspace @aether/web
+
+node scripts/run-app.mjs
+# → http://localhost:3000  (API proxied at /api and /socket.io)
 ```
 
-Open **http://localhost:3000**. The API listens on port 4000. `apps/web/server.mjs` serves Next.js and proxies `/api/*` and `/socket.io/*` over the **same browser origin**; do not point browser JavaScript to `localhost:4000` in a remote preview. `npm run dev:postgres` is a foreground process—use a separate terminal. Run `docker compose up -d redis` and set `REDIS_URL` only if you need Redis features.
+`run-app.mjs` starts an embedded PostgreSQL, runs migrations, seeds demo data on first run, and
+boots the API (:4000) behind the single-origin web server (:3000).
 
-If the official Prisma schema-engine binary cannot be downloaded in a network-restricted development environment, apply the **committed SQL** with `npm run db:local-deploy` instead of `npm run db:deploy`. This fallback checks migration checksums and was exercised against local PostgreSQL; use the official `prisma migrate deploy` on normal production hosts. Never reset a non-test database for testing.
+**Demo accounts** (password for all: `Passw0rd!demo`):
 
-Local development with no SMTP auto-verifies new registrations. **This shortcut is disabled in production.** Without SMTP, password recovery cannot send mail. Development files use `.local-uploads/`; it is not a production storage option.
-
-### Useful commands
-
-| Command | Purpose |
+| Username | Email |
 | --- | --- |
-| `npm run dev` | Start API and same-origin web development servers |
-| `npm run build` | Compile shared contracts, DB, API, and Next production build |
-| `npm run typecheck` / `npm run lint` | Validate TS and lint source/tests |
-| `npm run test` | Isolated unit tests |
-| `npm run test:integration` | **Resets only a database named `*_test`**, applies migrations, runs API/socket tests |
-| `npm run test:e2e` | **Resets only `*_test`**, runs API and web on **4100/3100**, executes Chromium browser flows |
-| `npm run db:validate` / `npm run db:deploy` | Validate schema / apply committed production migrations |
-| `npm run cleanup:orphans` | One-shot removal of uploads unused for >24 hours without Redis |
+| `ada` | ada@aether.dev |
+| `grace` | grace@aether.dev |
+| `alan` | alan@aether.dev |
+| `katherine` | katherine@aether.dev |
 
-E2E uses the `@sparticuz/chromium` executable bundled as a dev dependency and extracts missing NSS libraries to `/tmp` on minimal Linux hosts. It does **not** use your `cove` development data; choose a disposable `TEST_DATABASE_URL` whose database name ends in `_test`. Do not run it with a production database or while another test runner is using the same `_test` database.
+### With your own PostgreSQL
 
-## Repository guide
+```bash
+cp .env.example .env          # set DATABASE_URL (required) and friends
+npm run migrate               # apply SQL migrations
+npm run seed                  # optional demo data
+npm run dev                   # API + web in watch mode (separate processes)
+```
 
-- [`ARCHITECTURE.md`](ARCHITECTURE.md): services, trust boundaries, data flow and scaling.
-- [`API.md`](API.md): REST endpoints, authentication, examples, pagination and errors.
-- [`SOCKET_EVENTS.md`](SOCKET_EVENTS.md): Socket.IO events, acknowledgements and authorization.
-- [`DATABASE.md`](DATABASE.md): schema, invariants, migration and backup strategy.
-- [`SECURITY.md`](SECURITY.md): threat model, privacy controls and security caveats.
-- [`DEPLOYMENT.md`](DEPLOYMENT.md): production requirements, configuration and operations.
-- [`CONTRIBUTING.md`](CONTRIBUTING.md): workflow, tests and contribution expectations.
-- [`ENGINEERING_REPORT.md`](ENGINEERING_REPORT.md): verified results, limitations and next work.
+## Tests
 
-Source lives in `apps/web` (Next App Router, React, Tailwind/Radix), `apps/api` (Express + Socket.IO), `packages/db` (Prisma/Postgres), and `packages/shared` (Zod contracts). `.env.example` lists all configuration; secrets belong in `.env` or a deployment secret manager, never source control.
+```bash
+npm test                      # 104 Vitest tests: unit + integration + realtime
+npm run typecheck             # strict TS across all packages
+npm run lint
+npm run e2e                   # Playwright end-to-end (see below)
+```
 
-Cove is a standalone learning/production-oriented implementation. Deployments still require operational work: TLS, a production Postgres and object store, monitoring/backups, capacity tests, incident response, and third-party credentials. Consult the engineering report before making production claims.
+Test coverage includes permission resolution, crypto/session primitives, every REST resource
+(auth, servers, channels, messages, social, moderation) and the Socket.IO contract
+(auth, rooms, delivery, dedup, typing, reconnect, isolation).
+
+E2E specs live in `e2e/`. Playwright browsers download from a CDN on first `npx playwright
+install`; in restricted networks this may fail — the specs still document the flows.
+
+## Configuration
+
+Everything is environment-driven — see [`.env.example`](.env.example) for the full annotated
+list and [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for production guidance. Highlights:
+
+- **Storage**: `local` (dev/self-host), `cloudinary`, or `s3`/R2.
+- **Email**: `smtp` (production), `console` (dev — logs the emails), `none`.
+- **Voice**: set the three `LIVEKIT_*` values to enable voice/video; without them the app is
+  fully usable except voice, and says so explicitly.
+- **Redis**: optional; presence falls back to process-local.
+
+## Documentation
+
+| Document | Contents |
+| --- | --- |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System design, data flow, realtime pipeline |
+| [`docs/API.md`](docs/API.md) | REST endpoint reference |
+| [`docs/SOCKET_EVENTS.md`](docs/SOCKET_EVENTS.md) | Socket.IO contract |
+| [`docs/DATABASE.md`](docs/DATABASE.md) | Schema & migration guide |
+| [`docs/SECURITY.md`](docs/SECURITY.md) | Auth model, threat notes |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Docker/Node/Vercel deployment |
+| [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) | Dev workflow & conventions |
+
+## License
+
+MIT — see [LICENSE](LICENSE).
