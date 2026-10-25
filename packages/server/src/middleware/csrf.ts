@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { CSRF_COOKIE, CSRF_HEADER, SESSION_COOKIE } from '@aether/shared';
+import { config } from '../config.js';
 import { ApiError } from '../errors.js';
 import { safeEqual } from '../utils/crypto.js';
 
@@ -20,9 +21,16 @@ export function csrfProtection(req: Request, _res: Response, next: NextFunction)
   const hasSession = Boolean(cookies?.[SESSION_COOKIE]);
   const origin = req.headers.origin;
   if (origin) {
-    const allowed = [req.headers.host ? `https://${req.headers.host}` : '', req.headers.host ? `http://${req.headers.host}` : '', ...[]];
-    const host = req.headers.host;
-    if (host && !allowed.includes(`${origin}`) && !originEndsWithHost(origin, host)) {
+    const rawForwarded = req.headers['x-forwarded-host'];
+    const forwardedHost = (Array.isArray(rawForwarded) ? rawForwarded[0] : rawForwarded)
+      ?.split(',')[0]
+      ?.trim();
+    const effectiveHost = forwardedHost || req.headers.host;
+    const isAllowedOrigin =
+      config.corsOrigins.includes(origin) ||
+      (effectiveHost ? originMatchesHost(origin, effectiveHost) : false) ||
+      (req.headers.host ? originMatchesHost(origin, req.headers.host) : false);
+    if (!isAllowedOrigin) {
       return next(ApiError.forbidden('Cross-origin request rejected'));
     }
   }
@@ -34,7 +42,7 @@ export function csrfProtection(req: Request, _res: Response, next: NextFunction)
   next();
 }
 
-function originEndsWithHost(origin: string, host: string): boolean {
+function originMatchesHost(origin: string, host: string): boolean {
   try {
     return new URL(origin).host === host;
   } catch {

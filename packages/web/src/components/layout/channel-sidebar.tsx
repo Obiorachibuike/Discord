@@ -51,7 +51,7 @@ export function ChannelSidebar({
   const router = useRouter();
   const { user, logout } = useAuth();
   const { toast } = useToast();
-  const serverId = params.serverId;
+  const serverId = params?.serverId;
   const { data: channelsData, isLoading } = useChannels(serverId);
   const [createOpen, setCreateOpen] = React.useState(false);
   const [inviteOpen, setInviteOpen] = React.useState(false);
@@ -107,7 +107,7 @@ export function ChannelSidebar({
         ) : channelsData ? (
           <ChannelGroups
             data={channelsData}
-            activeChannelId={params.channelId}
+            activeChannelId={params?.channelId}
             activeVoiceChannelId={activeVoiceChannelId}
             onOpenVoice={onOpenVoice}
             canManage={canManage}

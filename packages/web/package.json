@@ -10,6 +10,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aether/database": "*",
+    "@aether/server": "*",
     "@aether/shared": "*",
     "@hookform/resolvers": "^3.10.0",
     "@livekit/components-react": "^2.7.2",

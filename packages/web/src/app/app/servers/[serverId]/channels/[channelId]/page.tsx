@@ -22,7 +22,8 @@ import { Permissions, hasPermission, type ChannelDTO } from '@aether/shared';
 
 export default function ChannelPage() {
   const params = useParams<{ serverId: string; channelId: string }>();
-  const { serverId, channelId } = params;
+  const serverId = params?.serverId ?? '';
+  const channelId = params?.channelId ?? '';
   const { user } = useAuth();
   const { data: serverData, isLoading: serverLoading } = useServer(serverId);
   const { data: channelsData } = useChannels(serverId);

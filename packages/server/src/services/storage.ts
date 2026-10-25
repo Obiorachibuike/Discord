@@ -39,7 +39,17 @@ class LocalDriver implements StorageDriver {
 
   constructor(dir: string) {
     this.dir = resolve(dir);
-    mkdirSync(this.dir, { recursive: true });
+    try {
+      mkdirSync(this.dir, { recursive: true });
+    } catch {
+      // Read-only serverless bundle root (e.g. /var/task on Vercel) — fall back to /tmp.
+      this.dir = resolve('/tmp/aether-uploads');
+      try {
+        mkdirSync(this.dir, { recursive: true });
+      } catch {
+        /* created lazily on write */
+      }
+    }
   }
 
   async put(input: {

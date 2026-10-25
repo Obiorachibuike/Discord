@@ -20,7 +20,7 @@ import type {
   ServerDTO,
   ServerMemberDTO,
 } from '@aether/shared';
-import { api, apiDelete, apiGet, apiPatch, apiPost } from './api';
+import { API_URL, api, apiDelete, apiGet, apiPatch, apiPost } from './api';
 import { getSocket } from './socket';
 import { uniqueClientId } from './utils';
 
@@ -456,17 +456,54 @@ function mapAllMessagePages(
   }
 }
 
+export interface ServerRuntimeConfig {
+  storageDriver: string;
+  emailProvider: string;
+  voiceConfigured: boolean;
+  googleAuthConfigured: boolean;
+  databaseConfigured?: boolean;
+  presenceMode: string;
+  realtimeMode?: 'websocket' | 'polling';
+}
+
+export function useServerConfig() {
+  return useQuery({
+    queryKey: ['server-config'],
+    queryFn: () => apiGet<ServerRuntimeConfig>('/api/config'),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+}
+
 /**
  * Connects the Socket.IO client and keeps query caches fresh from server
- * events. Mounted once inside the authenticated app shell.
+ * events. On serverless deployments (where Socket.IO is not hosted and
+ * `/api/config` reports `realtimeMode: 'polling'`), falls back to lightweight
+ * HTTP polling while the tab is visible instead of spamming `/socket.io/` 404s.
  */
 export function useRealtime(): {
   connected: boolean;
 } {
   const qc = useQueryClient();
+  const { data: runtimeConfig } = useServerConfig();
+  const realtimeMode = API_URL ? 'websocket' : runtimeConfig?.realtimeMode;
   const [connected, setConnected] = React.useState(false);
 
   React.useEffect(() => {
+    if (!realtimeMode) return;
+
+    if (realtimeMode === 'polling') {
+      setConnected(true);
+      const id = window.setInterval(() => {
+        if (document.visibilityState !== 'visible') return;
+        qc.invalidateQueries({ queryKey: ['messages'] });
+        qc.invalidateQueries({ queryKey: ['notifications'] });
+        qc.invalidateQueries({ queryKey: ['conversations'] });
+        qc.invalidateQueries({ queryKey: ['channels'] });
+      }, 4_000);
+      return () => window.clearInterval(id);
+    }
+
     const socket = getSocket();
 
     const onConnect = () => setConnected(true);
@@ -544,17 +581,19 @@ export function useRealtime(): {
       socket.off('channel:updated', onChannel);
       socket.off('channel:deleted', onChannel);
     };
-  }, [qc]);
+  }, [qc, realtimeMode]);
 
   return { connected };
 }
 
 /** Subscribes to a channel room and returns typing users. */
 export function useChannelSocket(channelId: string | undefined) {
+  const { data: runtimeConfig } = useServerConfig();
+  const isSocketEnabled = Boolean(API_URL) || runtimeConfig?.realtimeMode === 'websocket';
   const [typing, setTyping] = React.useState<Map<string, string>>(new Map());
 
   React.useEffect(() => {
-    if (!channelId) return;
+    if (!channelId || !isSocketEnabled) return;
     const socket = getSocket();
     socket.emit('channel:subscribe', { channelId });
     const onTyping = (p: {
@@ -577,20 +616,22 @@ export function useChannelSocket(channelId: string | undefined) {
       socket.off('typing:changed', onTyping);
       setTyping(new Map());
     };
-  }, [channelId]);
+  }, [channelId, isSocketEnabled]);
 
   return {
     typingUsers: [...typing.values()],
-    startTyping: () => channelId && getSocket().emit('typing:start', { channelId }),
-    stopTyping: () => channelId && getSocket().emit('typing:stop', { channelId }),
+    startTyping: () => channelId && isSocketEnabled && getSocket().emit('typing:start', { channelId }),
+    stopTyping: () => channelId && isSocketEnabled && getSocket().emit('typing:stop', { channelId }),
   };
 }
 
 export function useConversationSocket(conversationId: string | undefined) {
+  const { data: runtimeConfig } = useServerConfig();
+  const isSocketEnabled = Boolean(API_URL) || runtimeConfig?.realtimeMode === 'websocket';
   const [typing, setTyping] = React.useState<Map<string, string>>(new Map());
 
   React.useEffect(() => {
-    if (!conversationId) return;
+    if (!conversationId || !isSocketEnabled) return;
     const socket = getSocket();
     socket.emit('conversation:subscribe', { conversationId });
     const onTyping = (p: {
@@ -612,14 +653,14 @@ export function useConversationSocket(conversationId: string | undefined) {
       socket.emit('conversation:unsubscribe', { conversationId });
       socket.off('typing:changed', onTyping);
     };
-  }, [conversationId]);
+  }, [conversationId, isSocketEnabled]);
 
   return {
     typingUsers: [...typing.values()],
     startTyping: () =>
-      conversationId && getSocket().emit('conversation:typing:start', { conversationId }),
+      conversationId && isSocketEnabled && getSocket().emit('conversation:typing:start', { conversationId }),
     stopTyping: () =>
-      conversationId && getSocket().emit('conversation:typing:stop', { conversationId }),
+      conversationId && isSocketEnabled && getSocket().emit('conversation:typing:stop', { conversationId }),
   };
 }
 

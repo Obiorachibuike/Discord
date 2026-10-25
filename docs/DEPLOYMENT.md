@@ -76,13 +76,31 @@ Build the web image the same way (with `packages/web`) and run with
 `API_ORIGIN=http://api:4000`. Compose both with `postgres:16` and (optionally) `redis:7`
 and `livekit/livekit-server`. Keep `uploads/` on a volume when `STORAGE_DRIVER=local`.
 
-## Vercel (split-origin frontend)
+## Vercel
+
+### Option A: Full-stack on Vercel (recommended serverless setup)
+
+1. Import the repository with **Root Directory** set to `packages/web` (the included
+   `packages/web/vercel.json` configures `cd ../.. && npm ci` and `cd ../.. && npm run build`).
+2. Next.js serves both the App Router UI and the Express REST API (`/api/*`) via the
+   serverless catch-all route `packages/web/src/pages/api/[[...path]].ts`.
+3. Connect a PostgreSQL database (Vercel Postgres / Neon / Supabase) in your Vercel project
+   settings — `DATABASE_URL` (or `POSTGRES_PRISMA_URL` / `POSTGRES_URL`) is picked up
+   automatically, and SQL migrations in `packages/database/prisma/migrations` are applied
+   idempotently on cold start.
+4. Set a strong `SESSION_SECRET` (≥32 characters). Optional: `CLOUDINARY_*` or `S3_*` for
+   durable file attachments, `SMTP_URL` + `EMAIL_PROVIDER=smtp` for email delivery, and
+   `LIVEKIT_*` for voice/video rooms.
+5. In serverless mode (`/api/config` → `realtimeMode: "polling"`), the web client automatically
+   falls back to lightweight HTTP polling while the tab is visible instead of opening
+   persistent WebSockets.
+
+### Option B: Split-origin frontend on Vercel + external Node/Socket.IO host
 
 1. Root directory `packages/web`, framework Next.js.
-2. Set `NEXT_PUBLIC_API_URL=https://api.example.com` (build + runtime).
+2. Set `NEXT_PUBLIC_API_URL=https://api.example.com` (build + runtime) or `API_ORIGIN` to proxy.
 3. The API must allow the Vercel origin in `CORS_ORIGINS` and run with `COOKIE_SECURE=true`.
-4. Socket.IO needs a sticky, WebSocket-capable host (Railway/Render/Fly/EC2); serverless
-   functions cannot host the gateway.
+4. Socket.IO runs on a sticky, WebSocket-capable host (Railway/Render/Fly/EC2).
 
 ## Reverse proxy (nginx sketch)
 

@@ -17,7 +17,7 @@ import { cn, formatTime } from '@/lib/utils';
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const { connected } = useRealtime();
   const { data: serversData } = useServers();
   const { data: convsData } = useConversations();

@@ -22,6 +22,7 @@ interface InvitePreview {
 
 export default function InvitePage() {
   const params = useParams<{ code: string }>();
+  const code = params?.code ?? '';
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -30,25 +31,26 @@ export default function InvitePage() {
   const [joining, setJoining] = React.useState(false);
 
   React.useEffect(() => {
+    if (!code) return;
     void (async () => {
       try {
-        const res = await apiGet<{ invite: InvitePreview }>(`/api/invites/${params.code}`);
+        const res = await apiGet<{ invite: InvitePreview }>(`/api/invites/${code}`);
         setInvite(res.invite);
       } catch (err) {
         setError(err instanceof ApiError ? err.message : 'This invite is invalid or has expired.');
       }
     })();
-  }, [params.code]);
+  }, [code]);
 
   const join = async () => {
     if (!user) {
-      router.push(`/register?next=/invite/${params.code}`);
+      router.push(`/register?next=/invite/${code}`);
       return;
     }
     setJoining(true);
     try {
       const res = await apiPost<{ serverId: string; alreadyMember: boolean }>(
-        `/api/invites/${params.code}/join`,
+        `/api/invites/${code}/join`,
       );
       toast({
         kind: 'success',
@@ -99,7 +101,7 @@ export default function InvitePage() {
           {user ? null : (
             <p className="mt-4 text-sm text-muted-foreground">
               Already have an account?{' '}
-              <Link href={`/login?next=/invite/${params.code}`} className="text-accent hover:underline">
+              <Link href={`/login?next=/invite/${code}`} className="text-accent hover:underline">
                 Sign in
               </Link>
             </p>

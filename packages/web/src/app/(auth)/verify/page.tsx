@@ -10,7 +10,7 @@ import { Suspense } from 'react';
 
 function VerifyInner() {
   const params = useSearchParams();
-  const token = params.get('token');
+  const token = params?.get('token');
   const [state, setState] = React.useState<'pending' | 'ok' | 'fail'>('pending');
   const [message, setMessage] = React.useState('Verifying your email…');
 

@@ -9,20 +9,21 @@ import type { ChannelDTO } from '@aether/shared';
 /** /app/servers/:id → first available channel. */
 export default function ServerIndexPage() {
   const params = useParams<{ serverId: string }>();
+  const serverId = params?.serverId ?? '';
   const router = useRouter();
-  const { data: serverData, isLoading, isError } = useServer(params.serverId);
-  const { data: channelsData } = useChannels(params.serverId);
+  const { data: serverData, isLoading, isError } = useServer(serverId);
+  const { data: channelsData } = useChannels(serverId);
 
   useEffect(() => {
-    if (!channelsData) return;
+    if (!channelsData || !serverId) return;
     const all: ChannelDTO[] = [
       ...channelsData.uncategorized,
       ...channelsData.categories.flatMap((c) => c.channels),
     ];
     const text = all.filter((c) => c.type !== 'VOICE').sort((a, b) => a.position - b.position);
     const first = text[0] ?? all[0];
-    if (first) router.replace(`/app/servers/${params.serverId}/channels/${first.id}`);
-  }, [channelsData, params.serverId, router]);
+    if (first) router.replace(`/app/servers/${serverId}/channels/${first.id}`);
+  }, [channelsData, serverId, router]);
 
   if (isLoading)
     return (
