@@ -4,7 +4,9 @@ import 'express-async-errors';
 import cookieParser from 'cookie-parser';
 import { pinoHttp } from 'pino-http';
 import { randomUUID } from 'node:crypto';
+import { ensureMigrated } from '@aether/database';
 import { config } from './config.js';
+import { getDatabaseUrl } from './context.js';
 import { logger } from './logger.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { apiRateLimit, requestSizeLimit, securityMiddleware } from './middleware/security.js';
@@ -46,11 +48,23 @@ export function createApp() {
   app.use(cookieParser());
   app.use(express.json({ limit: '512kb' }));
   app.use(requestSizeLimit(1024 * 1024));
-  app.use(optionalAuth);
 
-  // Health endpoints bypass rate limiting and CSRF.
+  // Health/config endpoints bypass auto-migration, auth, rate limiting and CSRF.
   app.use('/api', healthRouter);
 
+  // On serverless deployments (Vercel), automatically apply any pending SQL
+  // migrations once per cold start when a database URL is configured.
+  app.use('/api', async (_req, _res, next) => {
+    if (config.isServerless) {
+      const dbUrl = getDatabaseUrl();
+      if (dbUrl) {
+        await ensureMigrated(dbUrl);
+      }
+    }
+    next();
+  });
+
+  app.use(optionalAuth);
   app.use('/api', apiRateLimit);
   app.use('/api', csrfProtection);
 

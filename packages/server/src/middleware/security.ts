@@ -1,9 +1,24 @@
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import type { IncomingHttpHeaders } from 'node:http';
 import type { Request, Response, NextFunction } from 'express';
 import { config } from '../config.js';
 import { ApiError } from '../errors.js';
+
+function isSameOriginRequest(origin: string, headers: IncomingHttpHeaders): boolean {
+  try {
+    const originHost = new URL(origin).host;
+    const rawForwarded = headers['x-forwarded-host'];
+    const forwardedHost = (Array.isArray(rawForwarded) ? rawForwarded[0] : rawForwarded)
+      ?.split(',')[0]
+      ?.trim();
+    const host = forwardedHost || headers.host;
+    return Boolean(host && originHost === host);
+  } catch {
+    return false;
+  }
+}
 
 export function securityMiddleware() {
   return [
@@ -11,7 +26,13 @@ export function securityMiddleware() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          imgSrc: ["'self'", 'data:', 'blob:', 'https://res.cloudinary.com', 'https://*.r2.cloudflarestorage.com'],
+          imgSrc: [
+            "'self'",
+            'data:',
+            'blob:',
+            'https://res.cloudinary.com',
+            'https://*.r2.cloudflarestorage.com',
+          ],
           mediaSrc: ["'self'", 'blob:', 'https:'],
           connectSrc: ["'self'", ...config.corsOrigins, 'wss:', 'ws:'],
           scriptSrc: ["'self'", "'unsafe-inline'"],
@@ -21,12 +42,12 @@ export function securityMiddleware() {
       },
       crossOriginEmbedderPolicy: false,
     }),
-    cors({
-      origin(origin, cb) {
-        if (!origin || config.corsOrigins.includes(origin)) return cb(null, true);
-        cb(new Error('Not allowed by CORS'));
-      },
-      credentials: true,
+    cors((req, cb) => {
+      const origin = req.headers.origin;
+      if (!origin || config.corsOrigins.includes(origin) || isSameOriginRequest(origin, req.headers)) {
+        return cb(null, { origin: true, credentials: true });
+      }
+      cb(new Error('Not allowed by CORS'));
     }),
   ];
 }
@@ -47,6 +68,7 @@ export const apiRateLimit = rateLimit({
   limit: config.API_RATE_LIMIT,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   handler: (_req, _res, next) => next(ApiError.tooMany('Too many requests — slow down.')),
 });
 
@@ -55,5 +77,6 @@ export const authRateLimit = rateLimit({
   limit: config.AUTH_RATE_LIMIT,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   handler: (_req, _res, next) => next(ApiError.tooMany('Too many attempts — try again later.')),
 });

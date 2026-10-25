@@ -8,13 +8,26 @@
  * single source of truth either way.
  */
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, dirname, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import pg from 'pg';
 
-const migrationsDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'prisma', 'migrations');
+function resolveMigrationsDir(): string {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    join(here, '..', 'prisma', 'migrations'),
+    resolve(process.cwd(), 'packages/database/prisma/migrations'),
+    resolve(process.cwd(), '../database/prisma/migrations'),
+    resolve(process.cwd(), '../../packages/database/prisma/migrations'),
+  ];
+  for (const dir of candidates) {
+    if (existsSync(dir)) return dir;
+  }
+  return candidates[0]!;
+}
 
 export async function runMigrations(connectionString: string): Promise<string[]> {
+  const migrationsDir = resolveMigrationsDir();
   const client = new pg.Client({ connectionString });
   await client.connect();
   const applied: string[] = [];
@@ -28,7 +41,9 @@ export async function runMigrations(connectionString: string): Promise<string[]>
       ),
     );
     const names = existsSync(migrationsDir)
-      ? readdirSync(migrationsDir).filter((n) => existsSync(join(migrationsDir, n, 'migration.sql'))).sort()
+      ? readdirSync(migrationsDir)
+          .filter((n) => existsSync(join(migrationsDir, n, 'migration.sql')))
+          .sort()
       : [];
     for (const name of names) {
       if (done.has(name)) continue;
@@ -50,10 +65,38 @@ export async function runMigrations(connectionString: string): Promise<string[]>
   }
 }
 
+const globalForMigrations = globalThis as unknown as {
+  __aetherMigrations?: Map<string, Promise<string[]>>;
+};
+
+/**
+ * Idempotent per-process migration guard for serverless cold starts.
+ * Runs `runMigrations` once per connection string and caches the promise;
+ * evicts the entry if migration fails so subsequent requests can retry.
+ */
+export function ensureMigrated(connectionString: string): Promise<string[]> {
+  if (!globalForMigrations.__aetherMigrations) {
+    globalForMigrations.__aetherMigrations = new Map();
+  }
+  const cache = globalForMigrations.__aetherMigrations;
+  const existing = cache.get(connectionString);
+  if (existing) return existing;
+
+  const pending = runMigrations(connectionString).catch((err) => {
+    cache.delete(connectionString);
+    throw err;
+  });
+  cache.set(connectionString, pending);
+  return pending;
+}
+
 // CLI entry
-import { pathToFileURL } from 'node:url';
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const url = process.env.DATABASE_URL;
+  const url =
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL;
   if (!url) {
     console.error('DATABASE_URL is required');
     process.exit(1);

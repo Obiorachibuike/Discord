@@ -35,7 +35,7 @@ import { MoreHorizontal, Pencil, Trash2, Users } from 'lucide-react';
 
 export default function ConversationPage() {
   const params = useParams<{ conversationId: string }>();
-  const { conversationId } = params;
+  const conversationId = params?.conversationId ?? '';
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
